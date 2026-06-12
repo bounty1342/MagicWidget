@@ -5,6 +5,13 @@ description: >-
   Works on iOS, Android and Web.
 version: 0.1.0
 repository: https://github.com/bounty1342/MagicWidget
+issue_tracker: https://github.com/bounty1342/MagicWidget/issues
+topics:
+  - animation
+  - shader
+  - effects
+  - sparkles
+  - reveal
 
 environment:
   sdk: ^3.6.0
