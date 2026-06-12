@@ -185,8 +185,18 @@ class _CardDemoTabState extends State<_CardDemoTab>
   final MagicWidgetController _controller = MagicWidgetController();
   final TextEditingController _textController =
       TextEditingController(text: 'Abracadabra');
+  static const List<BoxFit> _fitChoices = <BoxFit>[
+    BoxFit.cover,
+    BoxFit.contain,
+    BoxFit.fill,
+    BoxFit.fitWidth,
+    BoxFit.fitHeight,
+    BoxFit.scaleDown,
+    BoxFit.none,
+  ];
   final ImagePicker _imagePicker = ImagePicker();
   Uint8List? _imageBytes;
+  BoxFit _imageFit = BoxFit.cover;
   String _cardText = 'Abracadabra';
   String? _errorMessage;
 
@@ -247,7 +257,11 @@ class _CardDemoTabState extends State<_CardDemoTab>
                   waveStyle: MagicWaveStyle.lensFlare,
                 ),
                 sparklePadding: const EdgeInsets.all(40),
-                child: _MagicCard(imageBytes: _imageBytes, text: _cardText),
+                child: _MagicCard(
+                  imageBytes: _imageBytes,
+                  imageFit: _imageFit,
+                  text: _cardText,
+                ),
               ),
             ),
           ),
@@ -268,7 +282,15 @@ class _CardDemoTabState extends State<_CardDemoTab>
             ),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
+        _DropdownTile<BoxFit>(
+          label: 'Image fit',
+          value: _imageFit,
+          values: _fitChoices,
+          nameOf: (BoxFit fit) => fit.name,
+          onChanged: (BoxFit fit) => setState(() => _imageFit = fit),
+        ),
+        const SizedBox(height: 8),
         TextField(
           controller: _textController,
           decoration: const InputDecoration(
@@ -297,9 +319,14 @@ class _CardDemoTabState extends State<_CardDemoTab>
 }
 
 class _MagicCard extends StatelessWidget {
-  const _MagicCard({required this.imageBytes, required this.text});
+  const _MagicCard({
+    required this.imageBytes,
+    required this.imageFit,
+    required this.text,
+  });
 
   final Uint8List? imageBytes;
+  final BoxFit imageFit;
   final String text;
 
   @override
@@ -316,7 +343,7 @@ class _MagicCard extends StatelessWidget {
             SizedBox(
               height: 360,
               child: bytes != null
-                  ? Image.memory(bytes, fit: BoxFit.cover)
+                  ? Image.memory(bytes, fit: imageFit)
                   : const _ImagePlaceholder(),
             ),
             Padding(
