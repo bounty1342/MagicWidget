@@ -110,22 +110,25 @@ class _PlaygroundTabState extends State<_PlaygroundTab>
     return Column(
       children: [
         SizedBox(
-          height: 220,
+          height: 400,
           child: Center(
-            child: GestureDetector(
-              onTap: _controller.play,
-              child: MagicWidget(
-                controller: _controller,
-                style: _style,
-                duration: Duration(milliseconds: _durationMs.round()),
-                sparkleDuration:
-                    Duration(milliseconds: _sparkleDurationMs.round()),
-                loop: _isLooping,
-                curve: kCurveChoices[_curveName]!,
-                revealDirection: _revealDirection,
-                sparklePadding:
-                    const EdgeInsets.symmetric(horizontal: 56, vertical: 40),
-                child: const _MagicText(),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: GestureDetector(
+                onTap: _controller.play,
+                child: MagicWidget(
+                  controller: _controller,
+                  style: _style,
+                  duration: Duration(milliseconds: _durationMs.round()),
+                  sparkleDuration:
+                      Duration(milliseconds: _sparkleDurationMs.round()),
+                  loop: _isLooping,
+                  curve: kCurveChoices[_curveName]!,
+                  revealDirection: _revealDirection,
+                  sparklePadding:
+                      const EdgeInsets.symmetric(horizontal: 56, vertical: 40),
+                  child: const _MagicText(),
+                ),
               ),
             ),
           ),
@@ -232,17 +235,20 @@ class _CardDemoTabState extends State<_CardDemoTab>
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
       children: [
         Center(
-          child: GestureDetector(
-            onTap: _controller.play,
-            child: MagicWidget(
-              controller: _controller,
-              style: const MagicStyle(
-                sparkleDrift: 0.6,
-                driftDirection: MagicDriftDirection.centerOut,
-                waveStyle: MagicWaveStyle.lensFlare,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: GestureDetector(
+              onTap: _controller.play,
+              child: MagicWidget(
+                controller: _controller,
+                style: const MagicStyle(
+                  sparkleDrift: 0.6,
+                  driftDirection: MagicDriftDirection.centerOut,
+                  waveStyle: MagicWaveStyle.lensFlare,
+                ),
+                sparklePadding: const EdgeInsets.all(40),
+                child: _MagicCard(imageBytes: _imageBytes, text: _cardText),
               ),
-              sparklePadding: const EdgeInsets.all(40),
-              child: _MagicCard(imageBytes: _imageBytes, text: _cardText),
             ),
           ),
         ),
@@ -302,22 +308,22 @@ class _MagicCard extends StatelessWidget {
     return Card(
       clipBehavior: Clip.antiAlias,
       child: SizedBox(
-        width: 320,
+        width: 640,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             SizedBox(
-              height: 180,
+              height: 360,
               child: bytes != null
                   ? Image.memory(bytes, fit: BoxFit.cover)
                   : const _ImagePlaceholder(),
             ),
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(24),
               child: Text(
                 text.isEmpty ? 'Your text here' : text,
-                style: Theme.of(context).textTheme.titleLarge,
+                style: Theme.of(context).textTheme.headlineMedium,
                 textAlign: TextAlign.center,
               ),
             ),
@@ -343,7 +349,7 @@ class _ImagePlaceholder extends StatelessWidget {
       ),
       child: Icon(
         Icons.add_photo_alternate_outlined,
-        size: 56,
+        size: 112,
         color: Colors.white.withValues(alpha: 0.8),
       ),
     );
@@ -595,9 +601,9 @@ class _MagicText extends StatelessWidget {
   const _MagicText();
 
   static const TextStyle _baseStyle = TextStyle(
-    fontSize: 64,
+    fontSize: 128,
     fontWeight: FontWeight.w900,
-    letterSpacing: 4,
+    letterSpacing: 8,
     height: 1,
   );
 
@@ -610,7 +616,7 @@ class _MagicText extends StatelessWidget {
           style: _baseStyle.copyWith(
             foreground: Paint()
               ..style = PaintingStyle.stroke
-              ..strokeWidth = 10
+              ..strokeWidth = 20
               ..color = const Color(0xFF6D3410),
           ),
         ),
