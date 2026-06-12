@@ -8,12 +8,30 @@ shimmer behind it — just like the classic
 The whole effect is rendered with a single fragment shader, so it is fast and
 works on **iOS**, **Android** and **Web** (CanvasKit / Skwasm renderers).
 
+## Installation
+
+The package is not published on pub.dev yet; add it as a git dependency:
+
+```yaml
+dependencies:
+  magic_widget:
+    git:
+      url: https://github.com/bounty1342/MagicWidget.git
+```
+
+Requires Flutter `>=3.27.0` and Dart `^3.6.0`.
+
 ## Features
 
 - Reveal **any widget**, not just text: the child is captured as a texture and
   fed to the shader.
 - Organic wavy reveal front with a warm traveling glow.
 - Procedural twinkling sparkles in a configurable 4-color palette.
+- Two sparkle shapes: soft glowing stars, or pixel perfect pixel-art stars
+  that explode from their center like the GIF, plus an optional horizontal
+  gradient color mode.
+- Three wave styles: the warm glow band, an anamorphic lens flare, or a
+  transparent wave with no dressing at all.
 - Immutable `MagicStyle` with `copyWith` for the full visual configuration.
 - `autoPlay`, `loop`, or imperative control with `MagicWidgetController`
   (`play()` / `reset()`) and an observable `ValueListenable<MagicStatus>`.
@@ -43,6 +61,8 @@ MagicWidget(
     sparkleSize: 1.6,
     sparkleDrift: 0.8,
     driftDirection: MagicDriftDirection.up,
+    sparkleShape: MagicSparkleShape.pixel,
+    sparkleColorMode: MagicSparkleColorMode.gradient,
     glowColor: Color(0xCCB388FF),
   ),
   revealDirection: MagicRevealDirection.bottomToTop,
@@ -103,15 +123,22 @@ controller.dispose();
 | `twinkleSpeed` | `1.0` | Multiplier of the twinkling speed. |
 | `sparkleDrift` | `0.0` | Strength of the sparkle drift movement (0 = static). |
 | `driftDirection` | `up` | Drift direction (`MagicDriftDirection`: up, down, left, right). |
-| `armStrength` | `0.5` | Star arms strength: 0 = round halo, 1 = pronounced star. |
+| `sparkleShape` | `glow` | Sparkle rendering (`MagicSparkleShape`): soft `glow` stars or pixel perfect `pixel` art stars exploding from their center like the GIF. |
+| `sparkleColorMode` | `palette` | Color picking (`MagicSparkleColorMode`): random `palette` entry per sparkle, or a smooth horizontal `gradient` through the palette. |
+| `armStrength` | `0.5` | Star arms strength: 0 = round halo, 1 = pronounced star (`glow` shape only). |
 | `sparkleLayers` | `2` | Number of sparkle layers (1 to 3) for depth. |
 | `glowColor` | warm yellow | Color and base intensity (alpha) of the front glow. |
 | `glowWidth` | `1.0` | Width multiplier of the glow band. |
 | `glowIntensity` | `1.0` | Brightness multiplier of the glow band. |
+| `waveStyle` | `glow` | Wave dressing (`MagicWaveStyle`): `glow` band, anamorphic `lensFlare`, or `transparent` to disable it. |
 | `waveWobble` | `1.0` | Amplitude of the wavy reveal front (0 = straight edge). |
 | `edgeSoftness` | `1.0` | Softness of the reveal edge (higher = blurrier). |
 
 ## Example
+
+Try the playground live in your browser:
+**[bounty1342.github.io/MagicWidget](https://bounty1342.github.io/MagicWidget/)**
+(deployed automatically from `main` by GitHub Actions).
 
 A full playground app (iOS / Android / Web) lives in [`example/`](example/),
 with live sliders and selectors for every parameter above:
