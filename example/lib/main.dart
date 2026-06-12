@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:magic_widget/magic_widget.dart';
 
 void main() => runApp(const MagicExampleApp());
@@ -34,19 +35,49 @@ class MagicExampleApp extends StatelessWidget {
         colorSchemeSeed: const Color(0xFFFFA726),
         scaffoldBackgroundColor: const Color(0xFF14101F),
       ),
-      home: const _DemoPage(),
+      home: const _HomePage(),
     );
   }
 }
 
-class _DemoPage extends StatefulWidget {
-  const _DemoPage();
+class _HomePage extends StatelessWidget {
+  const _HomePage();
 
   @override
-  State<_DemoPage> createState() => _DemoPageState();
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('MagicWidget demo'),
+          backgroundColor: Colors.transparent,
+          bottom: const TabBar(
+            tabs: [
+              Tab(icon: Icon(Icons.tune), text: 'Playground'),
+              Tab(icon: Icon(Icons.image), text: 'Card'),
+            ],
+          ),
+        ),
+        body: const TabBarView(
+          children: [
+            _PlaygroundTab(),
+            _CardDemoTab(),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
-class _DemoPageState extends State<_DemoPage> {
+class _PlaygroundTab extends StatefulWidget {
+  const _PlaygroundTab();
+
+  @override
+  State<_PlaygroundTab> createState() => _PlaygroundTabState();
+}
+
+class _PlaygroundTabState extends State<_PlaygroundTab>
+    with AutomaticKeepAliveClientMixin {
   final MagicWidgetController _controller = MagicWidgetController();
   MagicStyle _style = const MagicStyle();
   MagicRevealDirection _revealDirection = MagicRevealDirection.leftToRight;
@@ -71,69 +102,249 @@ class _DemoPageState extends State<_DemoPage> {
   }
 
   @override
+  bool get wantKeepAlive => true;
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('MagicWidget playground'),
-        backgroundColor: Colors.transparent,
-        actions: [
-          IconButton(
-            tooltip: 'Replay',
-            onPressed: _controller.play,
-            icon: const Icon(Icons.auto_awesome),
-          ),
-          IconButton(
-            tooltip: 'Reset (hide)',
-            onPressed: _controller.reset,
-            icon: const Icon(Icons.replay),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          SizedBox(
-            height: 240,
-            child: Center(
-              child: GestureDetector(
-                onTap: _controller.play,
-                child: MagicWidget(
-                  controller: _controller,
-                  style: _style,
-                  duration: Duration(milliseconds: _durationMs.round()),
-                  sparkleDuration:
-                      Duration(milliseconds: _sparkleDurationMs.round()),
-                  loop: _isLooping,
-                  curve: kCurveChoices[_curveName]!,
-                  revealDirection: _revealDirection,
-                  sparklePadding:
-                      const EdgeInsets.symmetric(horizontal: 56, vertical: 40),
-                  child: const _MagicText(),
-                ),
+    super.build(context);
+    return Column(
+      children: [
+        SizedBox(
+          height: 220,
+          child: Center(
+            child: GestureDetector(
+              onTap: _controller.play,
+              child: MagicWidget(
+                controller: _controller,
+                style: _style,
+                duration: Duration(milliseconds: _durationMs.round()),
+                sparkleDuration:
+                    Duration(milliseconds: _sparkleDurationMs.round()),
+                loop: _isLooping,
+                curve: kCurveChoices[_curveName]!,
+                revealDirection: _revealDirection,
+                sparklePadding:
+                    const EdgeInsets.symmetric(horizontal: 56, vertical: 40),
+                child: const _MagicText(),
               ),
             ),
           ),
-          _StatusBanner(status: _controller.status),
-          const Divider(height: 1),
-          Expanded(
-            child: _ControlPanel(
-              style: _style,
-              onStyleChanged: _updateStyle,
-              revealDirection: _revealDirection,
-              onRevealDirectionChanged: (MagicRevealDirection d) =>
-                  setState(() => _revealDirection = d),
-              durationMs: _durationMs,
-              onDurationChanged: (double v) => setState(() => _durationMs = v),
-              sparkleDurationMs: _sparkleDurationMs,
-              onSparkleDurationChanged: (double v) =>
-                  setState(() => _sparkleDurationMs = v),
-              curveName: _curveName,
-              onCurveChanged: (String name) =>
-                  setState(() => _curveName = name),
-              isLooping: _isLooping,
-              onLoopChanged: _setLoop,
+        ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            IconButton(
+              tooltip: 'Replay',
+              onPressed: _controller.play,
+              icon: const Icon(Icons.auto_awesome),
+            ),
+            _StatusBanner(status: _controller.status),
+            IconButton(
+              tooltip: 'Reset (hide)',
+              onPressed: _controller.reset,
+              icon: const Icon(Icons.replay),
+            ),
+          ],
+        ),
+        const Divider(height: 1),
+        Expanded(
+          child: _ControlPanel(
+            style: _style,
+            onStyleChanged: _updateStyle,
+            revealDirection: _revealDirection,
+            onRevealDirectionChanged: (MagicRevealDirection d) =>
+                setState(() => _revealDirection = d),
+            durationMs: _durationMs,
+            onDurationChanged: (double v) => setState(() => _durationMs = v),
+            sparkleDurationMs: _sparkleDurationMs,
+            onSparkleDurationChanged: (double v) =>
+                setState(() => _sparkleDurationMs = v),
+            curveName: _curveName,
+            onCurveChanged: (String name) => setState(() => _curveName = name),
+            isLooping: _isLooping,
+            onLoopChanged: _setLoop,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CardDemoTab extends StatefulWidget {
+  const _CardDemoTab();
+
+  @override
+  State<_CardDemoTab> createState() => _CardDemoTabState();
+}
+
+class _CardDemoTabState extends State<_CardDemoTab>
+    with AutomaticKeepAliveClientMixin {
+  final MagicWidgetController _controller = MagicWidgetController();
+  final TextEditingController _textController =
+      TextEditingController(text: 'Abracadabra');
+  final ImagePicker _imagePicker = ImagePicker();
+  Uint8List? _imageBytes;
+  String _cardText = 'Abracadabra';
+  String? _errorMessage;
+
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _textController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      final XFile? file = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1200,
+      );
+      if (file == null) {
+        return;
+      }
+      final Uint8List bytes = await file.readAsBytes();
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _imageBytes = bytes;
+        _errorMessage = null;
+      });
+      _controller.play();
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+      setState(() => _errorMessage = 'Could not pick the image: $e');
+    }
+  }
+
+  void _updateCardText(String value) => setState(() => _cardText = value);
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+      children: [
+        Center(
+          child: GestureDetector(
+            onTap: _controller.play,
+            child: MagicWidget(
+              controller: _controller,
+              style: const MagicStyle(
+                sparkleDrift: 0.6,
+                driftDirection: MagicDriftDirection.centerOut,
+                waveStyle: MagicWaveStyle.lensFlare,
+              ),
+              sparklePadding: const EdgeInsets.all(40),
+              child: _MagicCard(imageBytes: _imageBytes, text: _cardText),
             ),
           ),
-        ],
+        ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            OutlinedButton.icon(
+              onPressed: _pickImage,
+              icon: const Icon(Icons.photo_library),
+              label: const Text('Pick an image'),
+            ),
+            const SizedBox(width: 12),
+            FilledButton.icon(
+              onPressed: _controller.play,
+              icon: const Icon(Icons.auto_awesome),
+              label: const Text('Replay'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        TextField(
+          controller: _textController,
+          decoration: const InputDecoration(
+            labelText: 'Card text',
+            border: OutlineInputBorder(),
+          ),
+          textCapitalization: TextCapitalization.sentences,
+          keyboardType: TextInputType.text,
+          textInputAction: TextInputAction.done,
+          onChanged: _updateCardText,
+          onSubmitted: (_) => _controller.play(),
+        ),
+        if (_errorMessage != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: SelectableText.rich(
+              TextSpan(
+                text: _errorMessage,
+                style: const TextStyle(color: Colors.redAccent),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _MagicCard extends StatelessWidget {
+  const _MagicCard({required this.imageBytes, required this.text});
+
+  final Uint8List? imageBytes;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final Uint8List? bytes = imageBytes;
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: SizedBox(
+        width: 320,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              height: 180,
+              child: bytes != null
+                  ? Image.memory(bytes, fit: BoxFit.cover)
+                  : const _ImagePlaceholder(),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                text.isEmpty ? 'Your text here' : text,
+                style: Theme.of(context).textTheme.titleLarge,
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ImagePlaceholder extends StatelessWidget {
+  const _ImagePlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF3A2A6B), Color(0xFF7A3A8F)],
+        ),
+      ),
+      child: Icon(
+        Icons.add_photo_alternate_outlined,
+        size: 56,
+        color: Colors.white.withValues(alpha: 0.8),
       ),
     );
   }
@@ -194,6 +405,22 @@ class _ControlPanel extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
       children: [
         const _SectionHeader('Sparkles'),
+        _DropdownTile<MagicSparkleShape>(
+          label: 'Shape',
+          value: style.sparkleShape,
+          values: MagicSparkleShape.values,
+          nameOf: (MagicSparkleShape s) => s.name,
+          onChanged: (MagicSparkleShape s) =>
+              onStyleChanged(style.copyWith(sparkleShape: s)),
+        ),
+        _DropdownTile<MagicSparkleColorMode>(
+          label: 'Color mode',
+          value: style.sparkleColorMode,
+          values: MagicSparkleColorMode.values,
+          nameOf: (MagicSparkleColorMode m) => m.name,
+          onChanged: (MagicSparkleColorMode m) =>
+              onStyleChanged(style.copyWith(sparkleColorMode: m)),
+        ),
         _SliderTile(
           label: 'Size',
           value: style.sparkleSize,
@@ -251,6 +478,14 @@ class _ControlPanel extends StatelessWidget {
               onStyleChanged(style.copyWith(sparkleLayers: v)),
         ),
         const _SectionHeader('Wave'),
+        _DropdownTile<MagicWaveStyle>(
+          label: 'Wave style',
+          value: style.waveStyle,
+          values: MagicWaveStyle.values,
+          nameOf: (MagicWaveStyle s) => s.name,
+          onChanged: (MagicWaveStyle s) =>
+              onStyleChanged(style.copyWith(waveStyle: s)),
+        ),
         _ColorSwatchTile(
           label: 'Glow color',
           value: style.glowColor,
@@ -272,6 +507,32 @@ class _ControlPanel extends StatelessWidget {
           onChanged: (double v) =>
               onStyleChanged(style.copyWith(glowIntensity: v)),
         ),
+        if (style.waveStyle == MagicWaveStyle.lensFlare) ...[
+          _SliderTile(
+            label: 'Flare streak',
+            value: style.flareStreak,
+            min: 0.2,
+            max: 3,
+            onChanged: (double v) =>
+                onStyleChanged(style.copyWith(flareStreak: v)),
+          ),
+          _SliderTile(
+            label: 'Flare ring',
+            value: style.flareRing,
+            min: 0,
+            max: 3,
+            onChanged: (double v) =>
+                onStyleChanged(style.copyWith(flareRing: v)),
+          ),
+          _DropdownTile<int>(
+            label: 'Flare ghosts',
+            value: style.flareGhosts,
+            values: const [0, 1, 2, 3],
+            nameOf: (int v) => '$v',
+            onChanged: (int v) =>
+                onStyleChanged(style.copyWith(flareGhosts: v)),
+          ),
+        ],
         _SliderTile(
           label: 'Wave wobble',
           value: style.waveWobble,

@@ -1,9 +1,15 @@
 # MagicWidget
 
-Reveal any Flutter widget with a magical left-to-right sweep: a warm glowing
-front travels across the child while twinkling multicolored sparkles pop and
-shimmer behind it — just like the classic
-["MAGIC" GIF](https://media2.giphy.com/media/v1.Y2lkPWZjZGU1NDk1eDU1ZXNpMm5tNThmcDU1Z3B1OXAzcmRrYmdlZjF3azhieWd1bXZnOCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/9r75ILTJtiDACKOKoY/giphy.gif).
+An over-engineered way to say *ta-da*: MagicWidget reveals any Flutter widget
+behind a magical sweep — a warm glowing front (or a full anamorphic lens
+flare) travels across the child while twinkling multicolored sparkles pop,
+drift and explode around it, faithfully recreating the classic
+["MAGIC" GIF](https://media2.giphy.com/media/v1.Y2lkPWZjZGU1NDk1eDU1ZXNpMm5tNThmcDU1Z3B1OXAzcmRrYmdlZjF3azhieWd1bXZnOCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/9r75ILTJtiDACKOKoY/giphy.gif)
+down to its pixel-art stars and horizontal color gradient.
+
+Yes, it has five reveal directions, four wave styles, two sparkle shapes,
+three flare controls and a radial explosion mode. No, you don't need all of
+them. You'll use them anyway.
 
 The whole effect is rendered with a single fragment shader, so it is fast and
 works on **iOS**, **Android** and **Web** (CanvasKit / Skwasm renderers).
@@ -30,8 +36,10 @@ Requires Flutter `>=3.27.0` and Dart `^3.6.0`.
 - Two sparkle shapes: soft glowing stars, or pixel perfect pixel-art stars
   that explode from their center like the GIF, plus an optional horizontal
   gradient color mode.
-- Three wave styles: the warm glow band, an anamorphic lens flare, or a
-  transparent wave with no dressing at all.
+- Four wave styles: the warm glow band, a tunable anamorphic lens flare, a
+  transparent wave, or no wave at all (sparkles only).
+- Five reveal directions: the 4 linear sweeps plus a center-to-border
+  explosion.
 - Immutable `MagicStyle` with `copyWith` for the full visual configuration.
 - `autoPlay`, `loop`, or imperative control with `MagicWidgetController`
   (`play()` / `reset()`) and an observable `ValueListenable<MagicStatus>`.
@@ -109,7 +117,7 @@ controller.dispose();
 | `autoPlay` | `true` | Start as soon as the widget is mounted. |
 | `loop` | `false` | Restart the animation automatically once finished. |
 | `curve` | `Curves.linear` | Easing curve applied to the reveal progress. |
-| `revealDirection` | `leftToRight` | Sweep direction (`MagicRevealDirection`: 4 directions). |
+| `revealDirection` | `leftToRight` | Sweep direction (`MagicRevealDirection`): 4 linear directions plus `centerOut`, an explosion from the center to the borders. |
 | `sparklePadding` | `EdgeInsets.zero` | Extra space so sparkles fly beyond the child. |
 | `onCompleted` | `null` | Called when the child is fully revealed. |
 
@@ -122,7 +130,7 @@ controller.dispose();
 | `sparkleSize` | `1.0` | Scale multiplier of every sparkle. |
 | `twinkleSpeed` | `1.0` | Multiplier of the twinkling speed. |
 | `sparkleDrift` | `0.0` | Strength of the sparkle drift movement (0 = static). |
-| `driftDirection` | `up` | Drift direction (`MagicDriftDirection`: up, down, left, right). |
+| `driftDirection` | `up` | Drift direction (`MagicDriftDirection`): up, down, left, right, or `centerOut` for a radial explosion. |
 | `sparkleShape` | `glow` | Sparkle rendering (`MagicSparkleShape`): soft `glow` stars or pixel perfect `pixel` art stars exploding from their center like the GIF. |
 | `sparkleColorMode` | `palette` | Color picking (`MagicSparkleColorMode`): random `palette` entry per sparkle, or a smooth horizontal `gradient` through the palette. |
 | `armStrength` | `0.5` | Star arms strength: 0 = round halo, 1 = pronounced star (`glow` shape only). |
@@ -130,7 +138,10 @@ controller.dispose();
 | `glowColor` | warm yellow | Color and base intensity (alpha) of the front glow. |
 | `glowWidth` | `1.0` | Width multiplier of the glow band. |
 | `glowIntensity` | `1.0` | Brightness multiplier of the glow band. |
-| `waveStyle` | `glow` | Wave dressing (`MagicWaveStyle`): `glow` band, anamorphic `lensFlare`, or `transparent` to disable it. |
+| `waveStyle` | `glow` | Wave dressing (`MagicWaveStyle`): `glow` band, anamorphic `lensFlare`, `transparent` (reveal without dressing), or `none` (no wave, sparkles cover the whole widget from the start). |
+| `flareStreak` | `1.0` | Length multiplier of the lens flare streak (`lensFlare` only). |
+| `flareRing` | `1.0` | Strength of the lens flare halo ring, 0 hides it (`lensFlare` only). |
+| `flareGhosts` | `3` | Number of lens flare ghost circles, 0 to 3 (`lensFlare` only). |
 | `waveWobble` | `1.0` | Amplitude of the wavy reveal front (0 = straight edge). |
 | `edgeSoftness` | `1.0` | Softness of the reveal edge (higher = blurrier). |
 
@@ -141,7 +152,8 @@ Try the playground live in your browser:
 (deployed automatically from `main` by GitHub Actions).
 
 A full playground app (iOS / Android / Web) lives in [`example/`](example/),
-with live sliders and selectors for every parameter above:
+with live sliders and selectors for every parameter above, plus a card demo
+where you pick an image from your device and type your own text:
 
 ```sh
 cd example
