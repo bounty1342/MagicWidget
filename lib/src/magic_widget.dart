@@ -17,6 +17,32 @@ const List<Color> kDefaultSparkleColors = <Color>[
 /// Default glow color of the reveal front (warm yellow).
 const Color kDefaultGlowColor = Color(0xCCFFC94D);
 
+/// Direction of the reveal sweep.
+enum MagicRevealDirection {
+  leftToRight(Offset(1, 0)),
+  rightToLeft(Offset(-1, 0)),
+  topToBottom(Offset(0, 1)),
+  bottomToTop(Offset(0, -1));
+
+  const MagicRevealDirection(this.vector);
+
+  /// Unit vector passed to the shader.
+  final Offset vector;
+}
+
+/// Direction in which the sparkles slowly drift.
+enum MagicDriftDirection {
+  up(Offset(0, -1)),
+  down(Offset(0, 1)),
+  left(Offset(-1, 0)),
+  right(Offset(1, 0));
+
+  const MagicDriftDirection(this.vector);
+
+  /// Unit vector passed to the shader.
+  final Offset vector;
+}
+
 /// Reveals [child] with a magical left-to-right sweep: a warm glow travels
 /// across the widget while twinkling multicolored sparkles pop behind it,
 /// just like the classic "MAGIC" GIF.
@@ -31,12 +57,28 @@ class MagicWidget extends StatefulWidget {
     this.duration = const Duration(milliseconds: 1800),
     this.sparkleDuration = const Duration(milliseconds: 2600),
     this.autoPlay = true,
+    this.loop = false,
+    this.curve = Curves.linear,
     this.sparkleColors = kDefaultSparkleColors,
     this.glowColor = kDefaultGlowColor,
     this.sparkleDensity = 0.35,
+    this.sparkleSize = 1.0,
+    this.twinkleSpeed = 1.0,
+    this.sparkleDrift = 0.0,
+    this.driftDirection = MagicDriftDirection.up,
+    this.armStrength = 0.5,
+    this.sparkleLayers = 2,
+    this.glowWidth = 1.0,
+    this.glowIntensity = 1.0,
+    this.waveWobble = 1.0,
+    this.edgeSoftness = 1.0,
+    this.revealDirection = MagicRevealDirection.leftToRight,
     this.sparklePadding = EdgeInsets.zero,
     this.onCompleted,
-  });
+  }) : assert(
+          sparkleLayers >= 1 && sparkleLayers <= 3,
+          'sparkleLayers must be between 1 and 3',
+        );
 
   /// The widget revealed by the magic sweep.
   final Widget child;
@@ -53,6 +95,12 @@ class MagicWidget extends StatefulWidget {
   /// Whether the reveal starts as soon as the widget is mounted.
   final bool autoPlay;
 
+  /// Whether the animation restarts automatically once finished.
+  final bool loop;
+
+  /// Easing curve applied to the reveal progress.
+  final Curve curve;
+
   /// Sparkle palette. The shader uses four colors; shorter lists are cycled.
   final List<Color> sparkleColors;
 
@@ -62,6 +110,39 @@ class MagicWidget extends StatefulWidget {
 
   /// Probability that a sparkle spawns in a given area, from 0 to 1.
   final double sparkleDensity;
+
+  /// Scale multiplier applied to every sparkle. 1 is the default size.
+  final double sparkleSize;
+
+  /// Multiplier of the twinkling speed. 1 is the default speed.
+  final double twinkleSpeed;
+
+  /// Strength of the sparkle drift movement. 0 keeps sparkles static.
+  final double sparkleDrift;
+
+  /// Direction in which the sparkles drift when [sparkleDrift] > 0.
+  final MagicDriftDirection driftDirection;
+
+  /// Star arms strength: 0 renders round halos, 1 pronounced star shapes.
+  final double armStrength;
+
+  /// Number of sparkle layers (1 to 3); more layers add depth.
+  final int sparkleLayers;
+
+  /// Width multiplier of the glow band. 1 is the default width.
+  final double glowWidth;
+
+  /// Brightness multiplier of the glow band. 1 is the default intensity.
+  final double glowIntensity;
+
+  /// Amplitude multiplier of the wavy reveal front. 0 is a straight edge.
+  final double waveWobble;
+
+  /// Softness multiplier of the reveal edge. Higher is blurrier.
+  final double edgeSoftness;
+
+  /// Direction of the reveal sweep.
+  final MagicRevealDirection revealDirection;
 
   /// Extra space around [child] so sparkles can fly beyond its bounds.
   /// Note that this padding participates in layout.
@@ -201,13 +282,17 @@ class _MagicWidgetState extends State<MagicWidget>
       widget.onCompleted?.call();
     }
     if (_elapsedSeconds >= _totalSeconds) {
+      if (widget.loop) {
+        _play();
+        return;
+      }
       _ticker.stop();
       setState(() => _phase = _MagicPhase.done);
     }
   }
 
   MagicEffectFrame _buildFrame() {
-    final double progress = _phase == _MagicPhase.hidden
+    final double linearProgress = _phase == _MagicPhase.hidden
         ? 0
         : (_elapsedSeconds / _revealSeconds).clamp(0.0, 1.0);
     final double fadeStart = _totalSeconds - 0.8;
@@ -217,10 +302,21 @@ class _MagicWidgetState extends State<MagicWidget>
             ((_elapsedSeconds - fadeStart) / (_totalSeconds - fadeStart))
                 .clamp(0.0, 1.0);
     return MagicEffectFrame(
-      progress: progress,
+      progress: widget.curve.transform(linearProgress),
       time: _elapsedSeconds,
       sparkleFade: sparkleFade,
       sparkleDensity: widget.sparkleDensity.clamp(0.0, 1.0),
+      sparkleSize: widget.sparkleSize,
+      twinkleSpeed: widget.twinkleSpeed,
+      driftAmount: widget.sparkleDrift,
+      driftDirection: widget.driftDirection.vector,
+      armStrength: widget.armStrength.clamp(0.0, 1.0),
+      sparkleLayers: widget.sparkleLayers,
+      glowWidth: widget.glowWidth,
+      glowIntensity: widget.glowIntensity,
+      waveWobble: widget.waveWobble,
+      edgeSoftness: widget.edgeSoftness,
+      revealDirection: widget.revealDirection.vector,
       glowColor: widget.glowColor,
       sparkleColors: _normalizedPalette(),
     );

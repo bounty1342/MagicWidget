@@ -55,18 +55,32 @@ controller.reset(); // hide the child again
 | --- | --- | --- |
 | `child` | required | Widget revealed by the sweep. |
 | `controller` | `null` | Replay / reset the effect imperatively. |
-| `duration` | 1800 ms | Duration of the left-to-right reveal. |
+| `duration` | 1800 ms | Duration of the reveal sweep. |
 | `sparkleDuration` | 2600 ms | How long sparkles keep twinkling afterwards. |
 | `autoPlay` | `true` | Start as soon as the widget is mounted. |
+| `loop` | `false` | Restart the animation automatically once finished. |
+| `curve` | `Curves.linear` | Easing curve applied to the reveal progress. |
+| `revealDirection` | `leftToRight` | Sweep direction (`MagicRevealDirection`: 4 directions). |
 | `sparkleColors` | green, cyan, yellow, magenta | Sparkle palette (4 colors, shorter lists are cycled). |
-| `glowColor` | warm yellow | Color and intensity (alpha) of the front glow. |
 | `sparkleDensity` | `0.35` | Probability of a sparkle per grid cell (0 to 1). |
+| `sparkleSize` | `1.0` | Scale multiplier of every sparkle. |
+| `twinkleSpeed` | `1.0` | Multiplier of the twinkling speed. |
+| `sparkleDrift` | `0.0` | Strength of the sparkle drift movement (0 = static). |
+| `driftDirection` | `up` | Drift direction (`MagicDriftDirection`: up, down, left, right). |
+| `armStrength` | `0.5` | Star arms strength: 0 = round halo, 1 = pronounced star. |
+| `sparkleLayers` | `2` | Number of sparkle layers (1 to 3) for depth. |
+| `glowColor` | warm yellow | Color and base intensity (alpha) of the front glow. |
+| `glowWidth` | `1.0` | Width multiplier of the glow band. |
+| `glowIntensity` | `1.0` | Brightness multiplier of the glow band. |
+| `waveWobble` | `1.0` | Amplitude of the wavy reveal front (0 = straight edge). |
+| `edgeSoftness` | `1.0` | Softness of the reveal edge (higher = blurrier). |
 | `sparklePadding` | `EdgeInsets.zero` | Extra space so sparkles fly beyond the child. |
 | `onCompleted` | `null` | Called when the child is fully revealed. |
 
 ## Example
 
-A full demo app (iOS / Android / Web) lives in [`example/`](example/):
+A full playground app (iOS / Android / Web) lives in [`example/`](example/),
+with live sliders and selectors for every parameter above:
 
 ```sh
 cd example

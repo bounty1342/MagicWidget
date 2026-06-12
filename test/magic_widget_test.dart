@@ -62,6 +62,31 @@ void main() {
       expect(hasCompleted, isTrue);
     });
 
+    testWidgets('loop restarts the animation instead of finishing',
+        (WidgetTester tester) async {
+      var actualCompletedCount = 0;
+      await tester.pumpWidget(
+        buildTestApp(
+          MagicWidget(
+            loop: true,
+            duration: const Duration(milliseconds: 200),
+            sparkleDuration: const Duration(milliseconds: 100),
+            curve: Curves.easeInOut,
+            revealDirection: MagicRevealDirection.bottomToTop,
+            sparkleDrift: 1,
+            onCompleted: () => actualCompletedCount++,
+            child: const Text('MAGIC'),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(actualCompletedCount, greaterThan(1));
+      await tester.pumpWidget(buildTestApp(const SizedBox()));
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('controller.reset hides the child again after a reveal',
         (WidgetTester tester) async {
       final controller = MagicWidgetController();
