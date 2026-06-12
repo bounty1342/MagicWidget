@@ -1,27 +1,24 @@
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_shaders/flutter_shaders.dart';
 import 'package:magic_widget/src/magic_effect_painter.dart';
-import 'package:magic_widget/src/magic_widget_controller.dart';
-
-/// Default sparkle palette, matching the colors of the original GIF.
-const List<Color> kDefaultSparkleColors = <Color>[
-  Color(0xFF7CFC52),
-  Color(0xFF4DE3FF),
-  Color(0xFFFFE94D),
-  Color(0xFFFF5DDB),
-];
-
-/// Default glow color of the reveal front (warm yellow).
-const Color kDefaultGlowColor = Color(0xCCFFC94D);
+import 'package:magic_widget/src/magic_style.dart';
 
 /// Direction of the reveal sweep.
 enum MagicRevealDirection {
+  /// The child is revealed from the left edge to the right edge.
   leftToRight(Offset(1, 0)),
+
+  /// The child is revealed from the right edge to the left edge.
   rightToLeft(Offset(-1, 0)),
+
+  /// The child is revealed from the top edge to the bottom edge.
   topToBottom(Offset(0, 1)),
+
+  /// The child is revealed from the bottom edge to the top edge.
   bottomToTop(Offset(0, -1));
 
   const MagicRevealDirection(this.vector);
@@ -30,63 +27,120 @@ enum MagicRevealDirection {
   final Offset vector;
 }
 
-/// Direction in which the sparkles slowly drift.
-enum MagicDriftDirection {
-  up(Offset(0, -1)),
-  down(Offset(0, 1)),
-  left(Offset(-1, 0)),
-  right(Offset(1, 0));
+/// The lifecycle of a [MagicWidget] animation.
+enum MagicStatus {
+  /// The child is hidden and the animation has not started.
+  hidden,
 
-  const MagicDriftDirection(this.vector);
+  /// The reveal sweep or the trailing sparkles are running.
+  revealing,
 
-  /// Unit vector passed to the shader.
-  final Offset vector;
+  /// The child is fully revealed and the animation has finished.
+  completed,
 }
 
-/// Reveals [child] with a magical left-to-right sweep: a warm glow travels
-/// across the widget while twinkling multicolored sparkles pop behind it,
-/// just like the classic "MAGIC" GIF.
+/// Starts and rewinds a [MagicWidget] from outside its subtree.
+///
+/// A controller may be attached to at most one [MagicWidget] at a time.
+/// Listen to [status] to react to animation lifecycle changes:
+///
+/// ```dart
+/// final controller = MagicWidgetController();
+///
+/// MagicWidget(
+///   controller: controller,
+///   autoPlay: false,
+///   child: const Text('MAGIC'),
+/// );
+///
+/// // Elsewhere:
+/// controller.play();
+/// ```
+///
+/// Call [dispose] when the controller is no longer needed.
+class MagicWidgetController {
+  _MagicWidgetState? _state;
+  final ValueNotifier<MagicStatus> _status =
+      ValueNotifier<MagicStatus>(MagicStatus.hidden);
+
+  /// The current animation status of the attached widget.
+  ValueListenable<MagicStatus> get status => _status;
+
+  /// Whether this controller is attached to a [MagicWidget].
+  bool get isAttached => _state != null;
+
+  /// Starts or restarts the magic reveal.
+  void play() {
+    assert(isAttached, 'MagicWidgetController is not attached to a widget');
+    _state?._play();
+  }
+
+  /// Hides the child and rewinds the effect.
+  void reset() {
+    assert(isAttached, 'MagicWidgetController is not attached to a widget');
+    _state?._reset();
+  }
+
+  /// Releases the resources held by this controller.
+  void dispose() => _status.dispose();
+
+  void _attach(_MagicWidgetState state) {
+    assert(
+      _state == null,
+      'MagicWidgetController is already attached to a widget',
+    );
+    _state = state;
+  }
+
+  void _detach(_MagicWidgetState state) {
+    if (_state == state) {
+      _state = null;
+    }
+  }
+}
+
+/// Reveals [child] with a magical sweep: a warm glow travels across the
+/// widget while twinkling multicolored sparkles pop behind it, just like
+/// the classic "MAGIC" GIF.
 ///
 /// The effect is rendered with a fragment shader and works on iOS, Android
-/// and Web (CanvasKit / Skwasm renderers).
+/// and Web (CanvasKit / Skwasm renderers). The look is configured with a
+/// [MagicStyle]; timing and playback are configured on the widget itself:
+///
+/// ```dart
+/// MagicWidget(
+///   style: const MagicStyle(sparkleDrift: 0.8),
+///   sparklePadding: const EdgeInsets.all(56),
+///   child: const Text('MAGIC'),
+/// )
+/// ```
+///
+/// If the shader fails to load, the error is reported to [FlutterError] and
+/// the child is shown without any effect.
 class MagicWidget extends StatefulWidget {
+  /// Creates a magic reveal around [child].
   const MagicWidget({
-    required this.child,
     super.key,
     this.controller,
+    this.style = const MagicStyle(),
     this.duration = const Duration(milliseconds: 1800),
     this.sparkleDuration = const Duration(milliseconds: 2600),
     this.autoPlay = true,
     this.loop = false,
     this.curve = Curves.linear,
-    this.sparkleColors = kDefaultSparkleColors,
-    this.glowColor = kDefaultGlowColor,
-    this.sparkleDensity = 0.35,
-    this.sparkleSize = 1.0,
-    this.twinkleSpeed = 1.0,
-    this.sparkleDrift = 0.0,
-    this.driftDirection = MagicDriftDirection.up,
-    this.armStrength = 0.5,
-    this.sparkleLayers = 2,
-    this.glowWidth = 1.0,
-    this.glowIntensity = 1.0,
-    this.waveWobble = 1.0,
-    this.edgeSoftness = 1.0,
     this.revealDirection = MagicRevealDirection.leftToRight,
     this.sparklePadding = EdgeInsets.zero,
     this.onCompleted,
-  }) : assert(
-          sparkleLayers >= 1 && sparkleLayers <= 3,
-          'sparkleLayers must be between 1 and 3',
-        );
-
-  /// The widget revealed by the magic sweep.
-  final Widget child;
+    required this.child,
+  });
 
   /// Optional controller to replay or reset the effect imperatively.
   final MagicWidgetController? controller;
 
-  /// Duration of the left-to-right reveal sweep.
+  /// Visual configuration of the sparkles and the glow wave.
+  final MagicStyle style;
+
+  /// Duration of the reveal sweep.
   final Duration duration;
 
   /// How long the sparkles keep twinkling after the reveal completes.
@@ -101,58 +155,42 @@ class MagicWidget extends StatefulWidget {
   /// Easing curve applied to the reveal progress.
   final Curve curve;
 
-  /// Sparkle palette. The shader uses four colors; shorter lists are cycled.
-  final List<Color> sparkleColors;
-
-  /// Color of the glow band travelling with the reveal front. Its opacity
-  /// controls the glow intensity.
-  final Color glowColor;
-
-  /// Probability that a sparkle spawns in a given area, from 0 to 1.
-  final double sparkleDensity;
-
-  /// Scale multiplier applied to every sparkle. 1 is the default size.
-  final double sparkleSize;
-
-  /// Multiplier of the twinkling speed. 1 is the default speed.
-  final double twinkleSpeed;
-
-  /// Strength of the sparkle drift movement. 0 keeps sparkles static.
-  final double sparkleDrift;
-
-  /// Direction in which the sparkles drift when [sparkleDrift] > 0.
-  final MagicDriftDirection driftDirection;
-
-  /// Star arms strength: 0 renders round halos, 1 pronounced star shapes.
-  final double armStrength;
-
-  /// Number of sparkle layers (1 to 3); more layers add depth.
-  final int sparkleLayers;
-
-  /// Width multiplier of the glow band. 1 is the default width.
-  final double glowWidth;
-
-  /// Brightness multiplier of the glow band. 1 is the default intensity.
-  final double glowIntensity;
-
-  /// Amplitude multiplier of the wavy reveal front. 0 is a straight edge.
-  final double waveWobble;
-
-  /// Softness multiplier of the reveal edge. Higher is blurrier.
-  final double edgeSoftness;
-
   /// Direction of the reveal sweep.
   final MagicRevealDirection revealDirection;
 
   /// Extra space around [child] so sparkles can fly beyond its bounds.
-  /// Note that this padding participates in layout.
+  ///
+  /// This padding participates in layout.
   final EdgeInsetsGeometry sparklePadding;
 
-  /// Called once the child is fully revealed (sparkles may still twinkle).
+  /// Called every time the child becomes fully revealed.
+  ///
+  /// Sparkles may keep twinkling after this callback fires.
   final VoidCallback? onCompleted;
+
+  /// The widget revealed by the magic sweep.
+  final Widget child;
 
   @override
   State<MagicWidget> createState() => _MagicWidgetState();
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties
+      ..add(DiagnosticsProperty<MagicStyle>('style', style))
+      ..add(DiagnosticsProperty<Duration>('duration', duration))
+      ..add(DiagnosticsProperty<Duration>('sparkleDuration', sparkleDuration))
+      ..add(FlagProperty('autoPlay', value: autoPlay, ifFalse: 'manual start'))
+      ..add(FlagProperty('loop', value: loop, ifTrue: 'looping'))
+      ..add(
+        EnumProperty<MagicRevealDirection>(
+          'revealDirection',
+          revealDirection,
+          defaultValue: MagicRevealDirection.leftToRight,
+        ),
+      );
+  }
 }
 
 enum _MagicPhase { hidden, playing, done }
@@ -168,6 +206,7 @@ class _MagicWidgetState extends State<MagicWidget>
   static ui.FragmentProgram? _cachedProgram;
   late final Ticker _ticker;
   MagicEffectPainter? _painter;
+  bool _hasShaderFailed = false;
   _MagicPhase _phase = _MagicPhase.hidden;
   double _elapsedSeconds = 0;
   bool _hasNotifiedCompletion = false;
@@ -183,10 +222,11 @@ class _MagicWidgetState extends State<MagicWidget>
   void initState() {
     super.initState();
     _ticker = createTicker(_handleTick);
-    widget.controller?.addListener(_handleControllerCommand);
+    widget.controller?._attach(this);
     _loadShader();
     if (widget.autoPlay) {
       _phase = _MagicPhase.playing;
+      _setStatus(MagicStatus.revealing);
       _ticker.start();
     }
   }
@@ -195,16 +235,23 @@ class _MagicWidgetState extends State<MagicWidget>
   void didUpdateWidget(MagicWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.controller != widget.controller) {
-      oldWidget.controller?.removeListener(_handleControllerCommand);
-      widget.controller?.addListener(_handleControllerCommand);
+      oldWidget.controller?._detach(this);
+      widget.controller?._attach(this);
     }
   }
 
   @override
   void dispose() {
-    widget.controller?.removeListener(_handleControllerCommand);
+    widget.controller?._detach(this);
     _ticker.dispose();
     super.dispose();
+  }
+
+  void _setStatus(MagicStatus status) {
+    final MagicWidgetController? controller = widget.controller;
+    if (controller != null && controller._status.value != status) {
+      controller._status.value = status;
+    }
   }
 
   Future<void> _loadShader() async {
@@ -214,10 +261,16 @@ class _MagicWidgetState extends State<MagicWidget>
       return;
     }
     final ui.FragmentProgram? program = await _loadProgram();
-    if (program == null || !mounted) {
+    if (!mounted) {
       return;
     }
-    setState(() => _painter = MagicEffectPainter(program.fragmentShader()));
+    setState(() {
+      if (program == null) {
+        _hasShaderFailed = true;
+      } else {
+        _painter = MagicEffectPainter(program.fragmentShader());
+      }
+    });
   }
 
   static Future<ui.FragmentProgram?> _loadProgram() async {
@@ -235,23 +288,14 @@ class _MagicWidgetState extends State<MagicWidget>
       }
     }
     FlutterError.reportError(
-      FlutterErrorDetails(exception: lastError!, stack: lastStackTrace),
+      FlutterErrorDetails(
+        exception: lastError!,
+        stack: lastStackTrace,
+        library: 'magic_widget',
+        context: ErrorDescription('while loading the magic sparkles shader'),
+      ),
     );
     return null;
-  }
-
-  void _handleControllerCommand() {
-    final MagicCommand? command = widget.controller?.pendingCommand;
-    if (command == null) {
-      return;
-    }
-    widget.controller?.consumeCommand();
-    switch (command) {
-      case MagicCommand.play:
-        _play();
-      case MagicCommand.reset:
-        _reset();
-    }
   }
 
   void _play() {
@@ -261,6 +305,7 @@ class _MagicWidgetState extends State<MagicWidget>
       _elapsedSeconds = 0;
       _hasNotifiedCompletion = false;
     });
+    _setStatus(MagicStatus.revealing);
     _ticker.start();
   }
 
@@ -271,6 +316,7 @@ class _MagicWidgetState extends State<MagicWidget>
       _elapsedSeconds = 0;
       _hasNotifiedCompletion = false;
     });
+    _setStatus(MagicStatus.hidden);
   }
 
   void _handleTick(Duration elapsed) {
@@ -288,6 +334,7 @@ class _MagicWidgetState extends State<MagicWidget>
       }
       _ticker.stop();
       setState(() => _phase = _MagicPhase.done);
+      _setStatus(MagicStatus.completed);
     }
   }
 
@@ -305,27 +352,10 @@ class _MagicWidgetState extends State<MagicWidget>
       progress: widget.curve.transform(linearProgress),
       time: _elapsedSeconds,
       sparkleFade: sparkleFade,
-      sparkleDensity: widget.sparkleDensity.clamp(0.0, 1.0),
-      sparkleSize: widget.sparkleSize,
-      twinkleSpeed: widget.twinkleSpeed,
-      driftAmount: widget.sparkleDrift,
-      driftDirection: widget.driftDirection.vector,
-      armStrength: widget.armStrength.clamp(0.0, 1.0),
-      sparkleLayers: widget.sparkleLayers,
-      glowWidth: widget.glowWidth,
-      glowIntensity: widget.glowIntensity,
-      waveWobble: widget.waveWobble,
-      edgeSoftness: widget.edgeSoftness,
       revealDirection: widget.revealDirection.vector,
-      glowColor: widget.glowColor,
-      sparkleColors: _normalizedPalette(),
+      style: widget.style,
     );
   }
-
-  List<Color> _normalizedPalette() => List<Color>.generate(
-        4,
-        (int i) => widget.sparkleColors[i % widget.sparkleColors.length],
-      );
 
   @override
   Widget build(BuildContext context) {
@@ -333,7 +363,7 @@ class _MagicWidgetState extends State<MagicWidget>
       padding: widget.sparklePadding,
       child: widget.child,
     );
-    if (_phase == _MagicPhase.done) {
+    if (_phase == _MagicPhase.done || _hasShaderFailed) {
       return paddedChild;
     }
     final MagicEffectPainter? painter = _painter;

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:magic_widget/magic_widget.dart';
 
@@ -47,18 +48,7 @@ class _DemoPage extends StatefulWidget {
 
 class _DemoPageState extends State<_DemoPage> {
   final MagicWidgetController _controller = MagicWidgetController();
-  double _sparkleSize = 1;
-  double _sparkleDensity = 0.35;
-  double _twinkleSpeed = 1;
-  double _sparkleDrift = 0;
-  MagicDriftDirection _driftDirection = MagicDriftDirection.up;
-  double _armStrength = 0.5;
-  int _sparkleLayers = 2;
-  Color _glowColor = kDefaultGlowColor;
-  double _glowWidth = 1;
-  double _glowIntensity = 1;
-  double _waveWobble = 1;
-  double _edgeSoftness = 1;
+  MagicStyle _style = const MagicStyle();
   MagicRevealDirection _revealDirection = MagicRevealDirection.leftToRight;
   double _durationMs = 1800;
   double _sparkleDurationMs = 2600;
@@ -70,6 +60,8 @@ class _DemoPageState extends State<_DemoPage> {
     _controller.dispose();
     super.dispose();
   }
+
+  void _updateStyle(MagicStyle style) => setState(() => _style = style);
 
   void _setLoop(bool value) {
     setState(() => _isLooping = value);
@@ -99,194 +91,241 @@ class _DemoPageState extends State<_DemoPage> {
       ),
       body: Column(
         children: [
-          _PreviewArea(
-            controller: _controller,
-            settingsBuilder: _buildMagicWidget,
+          SizedBox(
+            height: 240,
+            child: Center(
+              child: GestureDetector(
+                onTap: _controller.play,
+                child: MagicWidget(
+                  controller: _controller,
+                  style: _style,
+                  duration: Duration(milliseconds: _durationMs.round()),
+                  sparkleDuration:
+                      Duration(milliseconds: _sparkleDurationMs.round()),
+                  loop: _isLooping,
+                  curve: kCurveChoices[_curveName]!,
+                  revealDirection: _revealDirection,
+                  sparklePadding:
+                      const EdgeInsets.symmetric(horizontal: 56, vertical: 40),
+                  child: const _MagicText(),
+                ),
+              ),
+            ),
           ),
+          _StatusBanner(status: _controller.status),
           const Divider(height: 1),
-          Expanded(child: _buildControls()),
+          Expanded(
+            child: _ControlPanel(
+              style: _style,
+              onStyleChanged: _updateStyle,
+              revealDirection: _revealDirection,
+              onRevealDirectionChanged: (MagicRevealDirection d) =>
+                  setState(() => _revealDirection = d),
+              durationMs: _durationMs,
+              onDurationChanged: (double v) => setState(() => _durationMs = v),
+              sparkleDurationMs: _sparkleDurationMs,
+              onSparkleDurationChanged: (double v) =>
+                  setState(() => _sparkleDurationMs = v),
+              curveName: _curveName,
+              onCurveChanged: (String name) =>
+                  setState(() => _curveName = name),
+              isLooping: _isLooping,
+              onLoopChanged: _setLoop,
+            ),
+          ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildMagicWidget() {
-    return MagicWidget(
-      controller: _controller,
-      duration: Duration(milliseconds: _durationMs.round()),
-      sparkleDuration: Duration(milliseconds: _sparkleDurationMs.round()),
-      loop: _isLooping,
-      curve: kCurveChoices[_curveName]!,
-      sparkleDensity: _sparkleDensity,
-      sparkleSize: _sparkleSize,
-      twinkleSpeed: _twinkleSpeed,
-      sparkleDrift: _sparkleDrift,
-      driftDirection: _driftDirection,
-      armStrength: _armStrength,
-      sparkleLayers: _sparkleLayers,
-      glowColor: _glowColor,
-      glowWidth: _glowWidth,
-      glowIntensity: _glowIntensity,
-      waveWobble: _waveWobble,
-      edgeSoftness: _edgeSoftness,
-      revealDirection: _revealDirection,
-      sparklePadding: const EdgeInsets.symmetric(horizontal: 56, vertical: 40),
-      child: const _MagicText(),
+class _StatusBanner extends StatelessWidget {
+  const _StatusBanner({required this.status});
+
+  final ValueListenable<MagicStatus> status;
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<MagicStatus>(
+      valueListenable: status,
+      builder: (BuildContext context, MagicStatus value, _) => Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Text(
+          'Status: ${value.name}',
+          style: Theme.of(context).textTheme.labelSmall,
+        ),
+      ),
     );
   }
+}
 
-  Widget _buildControls() {
+class _ControlPanel extends StatelessWidget {
+  const _ControlPanel({
+    required this.style,
+    required this.onStyleChanged,
+    required this.revealDirection,
+    required this.onRevealDirectionChanged,
+    required this.durationMs,
+    required this.onDurationChanged,
+    required this.sparkleDurationMs,
+    required this.onSparkleDurationChanged,
+    required this.curveName,
+    required this.onCurveChanged,
+    required this.isLooping,
+    required this.onLoopChanged,
+  });
+
+  final MagicStyle style;
+  final ValueChanged<MagicStyle> onStyleChanged;
+  final MagicRevealDirection revealDirection;
+  final ValueChanged<MagicRevealDirection> onRevealDirectionChanged;
+  final double durationMs;
+  final ValueChanged<double> onDurationChanged;
+  final double sparkleDurationMs;
+  final ValueChanged<double> onSparkleDurationChanged;
+  final String curveName;
+  final ValueChanged<String> onCurveChanged;
+  final bool isLooping;
+  final ValueChanged<bool> onLoopChanged;
+
+  @override
+  Widget build(BuildContext context) {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
       children: [
         const _SectionHeader('Sparkles'),
         _SliderTile(
           label: 'Size',
-          value: _sparkleSize,
+          value: style.sparkleSize,
           min: 0.3,
           max: 2.5,
-          onChanged: (double v) => setState(() => _sparkleSize = v),
+          onChanged: (double v) =>
+              onStyleChanged(style.copyWith(sparkleSize: v)),
         ),
         _SliderTile(
           label: 'Density',
-          value: _sparkleDensity,
+          value: style.sparkleDensity,
           min: 0.05,
           max: 1,
-          onChanged: (double v) => setState(() => _sparkleDensity = v),
+          onChanged: (double v) =>
+              onStyleChanged(style.copyWith(sparkleDensity: v)),
         ),
         _SliderTile(
           label: 'Twinkle speed',
-          value: _twinkleSpeed,
+          value: style.twinkleSpeed,
           min: 0.2,
           max: 3,
-          onChanged: (double v) => setState(() => _twinkleSpeed = v),
+          onChanged: (double v) =>
+              onStyleChanged(style.copyWith(twinkleSpeed: v)),
         ),
         _SliderTile(
           label: 'Drift',
-          value: _sparkleDrift,
+          value: style.sparkleDrift,
           min: 0,
           max: 2,
-          onChanged: (double v) => setState(() => _sparkleDrift = v),
+          onChanged: (double v) =>
+              onStyleChanged(style.copyWith(sparkleDrift: v)),
         ),
         _DropdownTile<MagicDriftDirection>(
           label: 'Drift direction',
-          value: _driftDirection,
+          value: style.driftDirection,
           values: MagicDriftDirection.values,
           nameOf: (MagicDriftDirection d) => d.name,
           onChanged: (MagicDriftDirection d) =>
-              setState(() => _driftDirection = d),
+              onStyleChanged(style.copyWith(driftDirection: d)),
         ),
         _SliderTile(
           label: 'Star arms',
-          value: _armStrength,
+          value: style.armStrength,
           min: 0,
           max: 1,
-          onChanged: (double v) => setState(() => _armStrength = v),
+          onChanged: (double v) =>
+              onStyleChanged(style.copyWith(armStrength: v)),
         ),
         _DropdownTile<int>(
           label: 'Layers',
-          value: _sparkleLayers,
+          value: style.sparkleLayers,
           values: const [1, 2, 3],
           nameOf: (int v) => '$v',
-          onChanged: (int v) => setState(() => _sparkleLayers = v),
+          onChanged: (int v) =>
+              onStyleChanged(style.copyWith(sparkleLayers: v)),
         ),
         const _SectionHeader('Wave'),
         _ColorSwatchTile(
           label: 'Glow color',
-          value: _glowColor,
+          value: style.glowColor,
           choices: kGlowChoices,
-          onChanged: (Color c) => setState(() => _glowColor = c),
+          onChanged: (Color c) => onStyleChanged(style.copyWith(glowColor: c)),
         ),
         _SliderTile(
           label: 'Glow width',
-          value: _glowWidth,
+          value: style.glowWidth,
           min: 0.2,
           max: 3,
-          onChanged: (double v) => setState(() => _glowWidth = v),
+          onChanged: (double v) => onStyleChanged(style.copyWith(glowWidth: v)),
         ),
         _SliderTile(
           label: 'Glow intensity',
-          value: _glowIntensity,
+          value: style.glowIntensity,
           min: 0,
           max: 2.5,
-          onChanged: (double v) => setState(() => _glowIntensity = v),
+          onChanged: (double v) =>
+              onStyleChanged(style.copyWith(glowIntensity: v)),
         ),
         _SliderTile(
           label: 'Wave wobble',
-          value: _waveWobble,
+          value: style.waveWobble,
           min: 0,
           max: 3,
-          onChanged: (double v) => setState(() => _waveWobble = v),
+          onChanged: (double v) =>
+              onStyleChanged(style.copyWith(waveWobble: v)),
         ),
         _SliderTile(
           label: 'Edge softness',
-          value: _edgeSoftness,
+          value: style.edgeSoftness,
           min: 0.2,
           max: 3,
-          onChanged: (double v) => setState(() => _edgeSoftness = v),
+          onChanged: (double v) =>
+              onStyleChanged(style.copyWith(edgeSoftness: v)),
         ),
         _DropdownTile<MagicRevealDirection>(
           label: 'Reveal direction',
-          value: _revealDirection,
+          value: revealDirection,
           values: MagicRevealDirection.values,
           nameOf: (MagicRevealDirection d) => d.name,
-          onChanged: (MagicRevealDirection d) =>
-              setState(() => _revealDirection = d),
+          onChanged: onRevealDirectionChanged,
         ),
         const _SectionHeader('Timing'),
         _SliderTile(
           label: 'Duration (ms)',
-          value: _durationMs,
+          value: durationMs,
           min: 400,
           max: 4000,
           decimals: 0,
-          onChanged: (double v) => setState(() => _durationMs = v),
+          onChanged: onDurationChanged,
         ),
         _SliderTile(
           label: 'Sparkle time (ms)',
-          value: _sparkleDurationMs,
+          value: sparkleDurationMs,
           min: 0,
           max: 5000,
           decimals: 0,
-          onChanged: (double v) => setState(() => _sparkleDurationMs = v),
+          onChanged: onSparkleDurationChanged,
         ),
         _DropdownTile<String>(
           label: 'Curve',
-          value: _curveName,
+          value: curveName,
           values: kCurveChoices.keys.toList(),
           nameOf: (String name) => name,
-          onChanged: (String name) => setState(() => _curveName = name),
+          onChanged: onCurveChanged,
         ),
         SwitchListTile(
           title: const Text('Loop'),
           contentPadding: EdgeInsets.zero,
-          value: _isLooping,
-          onChanged: _setLoop,
+          value: isLooping,
+          onChanged: onLoopChanged,
         ),
       ],
-    );
-  }
-}
-
-class _PreviewArea extends StatelessWidget {
-  const _PreviewArea({
-    required this.controller,
-    required this.settingsBuilder,
-  });
-
-  final MagicWidgetController controller;
-  final Widget Function() settingsBuilder;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 240,
-      child: Center(
-        child: GestureDetector(
-          onTap: controller.play,
-          child: settingsBuilder(),
-        ),
-      ),
     );
   }
 }

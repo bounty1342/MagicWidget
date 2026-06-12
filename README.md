@@ -14,9 +14,12 @@ works on **iOS**, **Android** and **Web** (CanvasKit / Skwasm renderers).
   fed to the shader.
 - Organic wavy reveal front with a warm traveling glow.
 - Procedural twinkling sparkles in a configurable 4-color palette.
-- `autoPlay` or imperative control with `MagicWidgetController`
-  (`play()` / `reset()`).
+- Immutable `MagicStyle` with `copyWith` for the full visual configuration.
+- `autoPlay`, `loop`, or imperative control with `MagicWidgetController`
+  (`play()` / `reset()`) and an observable `ValueListenable<MagicStatus>`.
 - `onCompleted` callback when the child is fully revealed.
+- Graceful degradation: if the shader fails to load, the child is shown
+  without any effect and the error is reported to `FlutterError`.
 
 ## Usage
 
@@ -32,7 +35,23 @@ MagicWidget(
 )
 ```
 
-Imperative control:
+Customize the look with a `MagicStyle`:
+
+```dart
+MagicWidget(
+  style: const MagicStyle(
+    sparkleSize: 1.6,
+    sparkleDrift: 0.8,
+    driftDirection: MagicDriftDirection.up,
+    glowColor: Color(0xCCB388FF),
+  ),
+  revealDirection: MagicRevealDirection.bottomToTop,
+  curve: Curves.easeInOut,
+  child: const MyCard(),
+)
+```
+
+Imperative control and status observation:
 
 ```dart
 final controller = MagicWidgetController();
@@ -47,13 +66,23 @@ MagicWidget(
 // Later:
 controller.play();  // start or replay the reveal
 controller.reset(); // hide the child again
+
+// React to lifecycle changes (hidden, revealing, completed):
+ValueListenableBuilder<MagicStatus>(
+  valueListenable: controller.status,
+  builder: (context, status, _) => Text(status.name),
+)
+
+// Dispose with the owning State:
+controller.dispose();
 ```
 
-### Parameters
+### `MagicWidget` parameters
 
 | Parameter | Default | Description |
 | --- | --- | --- |
 | `child` | required | Widget revealed by the sweep. |
+| `style` | `MagicStyle()` | Visual configuration (see below). |
 | `controller` | `null` | Replay / reset the effect imperatively. |
 | `duration` | 1800 ms | Duration of the reveal sweep. |
 | `sparkleDuration` | 2600 ms | How long sparkles keep twinkling afterwards. |
@@ -61,6 +90,13 @@ controller.reset(); // hide the child again
 | `loop` | `false` | Restart the animation automatically once finished. |
 | `curve` | `Curves.linear` | Easing curve applied to the reveal progress. |
 | `revealDirection` | `leftToRight` | Sweep direction (`MagicRevealDirection`: 4 directions). |
+| `sparklePadding` | `EdgeInsets.zero` | Extra space so sparkles fly beyond the child. |
+| `onCompleted` | `null` | Called when the child is fully revealed. |
+
+### `MagicStyle` properties
+
+| Property | Default | Description |
+| --- | --- | --- |
 | `sparkleColors` | green, cyan, yellow, magenta | Sparkle palette (4 colors, shorter lists are cycled). |
 | `sparkleDensity` | `0.35` | Probability of a sparkle per grid cell (0 to 1). |
 | `sparkleSize` | `1.0` | Scale multiplier of every sparkle. |
@@ -74,8 +110,6 @@ controller.reset(); // hide the child again
 | `glowIntensity` | `1.0` | Brightness multiplier of the glow band. |
 | `waveWobble` | `1.0` | Amplitude of the wavy reveal front (0 = straight edge). |
 | `edgeSoftness` | `1.0` | Softness of the reveal edge (higher = blurrier). |
-| `sparklePadding` | `EdgeInsets.zero` | Extra space so sparkles fly beyond the child. |
-| `onCompleted` | `null` | Called when the child is fully revealed. |
 
 ## Example
 
