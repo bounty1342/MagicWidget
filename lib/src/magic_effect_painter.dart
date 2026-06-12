@@ -71,9 +71,15 @@ class MagicEffectPainter {
     setFloat(style.sparkleDrift);
     setVec2(style.driftDirection.vector);
     setFloat(style.armStrength);
+    setFloat(style.sparkleShape.index.toDouble());
+    setFloat(style.sparkleColorMode.index.toDouble());
     setFloat(style.sparkleLayers.toDouble());
     setFloat(style.glowWidth);
     setFloat(style.glowIntensity);
+    setFloat(style.waveStyle.index.toDouble());
+    setFloat(style.flareStreak);
+    setFloat(style.flareRing);
+    setFloat(style.flareGhosts.toDouble());
     setFloat(style.waveWobble);
     setFloat(style.edgeSoftness);
     setVec2(frame.revealDirection);

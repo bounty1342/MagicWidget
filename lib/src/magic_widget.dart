@@ -19,11 +19,16 @@ enum MagicRevealDirection {
   topToBottom(Offset(0, 1)),
 
   /// The child is revealed from the bottom edge to the top edge.
-  bottomToTop(Offset(0, -1));
+  bottomToTop(Offset(0, -1)),
+
+  /// The child is revealed from the center towards the borders, like an
+  /// explosion.
+  centerOut(Offset.zero);
 
   const MagicRevealDirection(this.vector);
 
-  /// Unit vector passed to the shader.
+  /// Unit vector passed to the shader; [Offset.zero] selects the radial
+  /// center-to-border sweep.
   final Offset vector;
 }
 

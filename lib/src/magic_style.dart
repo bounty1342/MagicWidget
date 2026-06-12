@@ -12,6 +12,44 @@ const List<Color> kDefaultSparkleColors = <Color>[
 /// Default glow color of the reveal front (warm yellow).
 const Color kDefaultGlowColor = Color(0xCCFFC94D);
 
+/// The rendering style of every sparkle.
+enum MagicSparkleShape {
+  /// Soft glowing four-pointed stars, the original look.
+  glow,
+
+  /// Crisp pixel-art stars, a pixel perfect replica of the GIF sparkle:
+  /// hard square pixels forming a rounded diamond that explodes outwards
+  /// from its center in discrete steps, with a white-hot center pixel.
+  pixel,
+}
+
+/// How sparkles pick their color from [MagicStyle.sparkleColors].
+enum MagicSparkleColorMode {
+  /// Each sparkle picks one random color of the palette, the original look.
+  palette,
+
+  /// Sparkle colors blend smoothly through the palette along the horizontal
+  /// position, forming a gradient across the widget like the GIF.
+  gradient,
+}
+
+/// The dressing drawn on the reveal wave as it travels across the child.
+enum MagicWaveStyle {
+  /// A warm glowing band, the original look.
+  glow,
+
+  /// An anamorphic lens flare: a white-hot core with long streaks, a halo
+  /// ring and palette-tinted ghost circles, like the flare of the GIF.
+  lensFlare,
+
+  /// No dressing at all: the wave reveals the child transparently.
+  transparent,
+
+  /// No wave at all: the child stays fully visible and the sparkles appear
+  /// over the whole widget from the start.
+  none,
+}
+
 /// Direction in which the sparkles slowly drift.
 enum MagicDriftDirection {
   /// Sparkles float upwards.
@@ -24,11 +62,15 @@ enum MagicDriftDirection {
   left(Offset(-1, 0)),
 
   /// Sparkles drift to the right.
-  right(Offset(1, 0));
+  right(Offset(1, 0)),
+
+  /// Sparkles explode outwards from the center, faster when further out.
+  centerOut(Offset.zero);
 
   const MagicDriftDirection(this.vector);
 
-  /// Unit vector passed to the shader.
+  /// Unit vector passed to the shader; [Offset.zero] selects the radial
+  /// center-to-border drift.
   final Offset vector;
 }
 
@@ -55,10 +97,16 @@ class MagicStyle with Diagnosticable {
     this.sparkleDrift = 0.0,
     this.driftDirection = MagicDriftDirection.up,
     this.armStrength = 0.5,
+    this.sparkleShape = MagicSparkleShape.glow,
+    this.sparkleColorMode = MagicSparkleColorMode.palette,
     this.sparkleLayers = 2,
     this.glowColor = kDefaultGlowColor,
     this.glowWidth = 1.0,
     this.glowIntensity = 1.0,
+    this.waveStyle = MagicWaveStyle.glow,
+    this.flareStreak = 1.0,
+    this.flareRing = 1.0,
+    this.flareGhosts = 3,
     this.waveWobble = 1.0,
     this.edgeSoftness = 1.0,
   })  : assert(
@@ -78,6 +126,12 @@ class MagicStyle with Diagnosticable {
         ),
         assert(glowWidth > 0, 'glowWidth must be greater than 0'),
         assert(glowIntensity >= 0, 'glowIntensity must not be negative'),
+        assert(flareStreak > 0, 'flareStreak must be greater than 0'),
+        assert(flareRing >= 0, 'flareRing must not be negative'),
+        assert(
+          flareGhosts >= 0 && flareGhosts <= 3,
+          'flareGhosts must be between 0 and 3',
+        ),
         assert(waveWobble >= 0, 'waveWobble must not be negative'),
         assert(edgeSoftness > 0, 'edgeSoftness must be greater than 0');
 
@@ -108,8 +162,17 @@ class MagicStyle with Diagnosticable {
   /// Star arms strength.
   ///
   /// At 0 sparkles render as round halos; at 1 as pronounced four-pointed
-  /// stars.
+  /// stars. Has no effect with [MagicSparkleShape.pixel].
   final double armStrength;
+
+  /// Rendering style of the sparkles: soft [MagicSparkleShape.glow] stars or
+  /// crisp pixel-art [MagicSparkleShape.pixel] stars matching the GIF.
+  final MagicSparkleShape sparkleShape;
+
+  /// How sparkles pick their color: a random [MagicSparkleColorMode.palette]
+  /// entry per sparkle, or a smooth [MagicSparkleColorMode.gradient] through
+  /// the palette along the horizontal position.
+  final MagicSparkleColorMode sparkleColorMode;
 
   /// Number of sparkle layers, from 1 to 3. More layers add depth.
   final int sparkleLayers;
@@ -125,6 +188,27 @@ class MagicStyle with Diagnosticable {
 
   /// Brightness multiplier of the glow band.
   final double glowIntensity;
+
+  /// Dressing of the reveal wave: a [MagicWaveStyle.glow] band, a
+  /// [MagicWaveStyle.lensFlare], [MagicWaveStyle.transparent] to hide the
+  /// dressing, or [MagicWaveStyle.none] to disable the wave entirely.
+  /// [glowColor], [glowWidth] and [glowIntensity] also drive the flare.
+  final MagicWaveStyle waveStyle;
+
+  /// Length multiplier of the main lens flare streak.
+  ///
+  /// Only used with [MagicWaveStyle.lensFlare].
+  final double flareStreak;
+
+  /// Strength multiplier of the lens flare halo ring, 0 to hide it.
+  ///
+  /// Only used with [MagicWaveStyle.lensFlare].
+  final double flareRing;
+
+  /// Number of lens flare ghost circles, from 0 to 3.
+  ///
+  /// Only used with [MagicWaveStyle.lensFlare].
+  final int flareGhosts;
 
   /// Amplitude multiplier of the wavy reveal front. At 0 the edge is
   /// straight.
@@ -142,10 +226,16 @@ class MagicStyle with Diagnosticable {
     double? sparkleDrift,
     MagicDriftDirection? driftDirection,
     double? armStrength,
+    MagicSparkleShape? sparkleShape,
+    MagicSparkleColorMode? sparkleColorMode,
     int? sparkleLayers,
     Color? glowColor,
     double? glowWidth,
     double? glowIntensity,
+    MagicWaveStyle? waveStyle,
+    double? flareStreak,
+    double? flareRing,
+    int? flareGhosts,
     double? waveWobble,
     double? edgeSoftness,
   }) {
@@ -157,10 +247,16 @@ class MagicStyle with Diagnosticable {
       sparkleDrift: sparkleDrift ?? this.sparkleDrift,
       driftDirection: driftDirection ?? this.driftDirection,
       armStrength: armStrength ?? this.armStrength,
+      sparkleShape: sparkleShape ?? this.sparkleShape,
+      sparkleColorMode: sparkleColorMode ?? this.sparkleColorMode,
       sparkleLayers: sparkleLayers ?? this.sparkleLayers,
       glowColor: glowColor ?? this.glowColor,
       glowWidth: glowWidth ?? this.glowWidth,
       glowIntensity: glowIntensity ?? this.glowIntensity,
+      waveStyle: waveStyle ?? this.waveStyle,
+      flareStreak: flareStreak ?? this.flareStreak,
+      flareRing: flareRing ?? this.flareRing,
+      flareGhosts: flareGhosts ?? this.flareGhosts,
       waveWobble: waveWobble ?? this.waveWobble,
       edgeSoftness: edgeSoftness ?? this.edgeSoftness,
     );
@@ -188,10 +284,16 @@ class MagicStyle with Diagnosticable {
         other.sparkleDrift == sparkleDrift &&
         other.driftDirection == driftDirection &&
         other.armStrength == armStrength &&
+        other.sparkleShape == sparkleShape &&
+        other.sparkleColorMode == sparkleColorMode &&
         other.sparkleLayers == sparkleLayers &&
         other.glowColor == glowColor &&
         other.glowWidth == glowWidth &&
         other.glowIntensity == glowIntensity &&
+        other.waveStyle == waveStyle &&
+        other.flareStreak == flareStreak &&
+        other.flareRing == flareRing &&
+        other.flareGhosts == flareGhosts &&
         other.waveWobble == waveWobble &&
         other.edgeSoftness == edgeSoftness;
   }
@@ -205,10 +307,16 @@ class MagicStyle with Diagnosticable {
         sparkleDrift,
         driftDirection,
         armStrength,
+        sparkleShape,
+        sparkleColorMode,
         sparkleLayers,
         glowColor,
         glowWidth,
         glowIntensity,
+        waveStyle,
+        flareStreak,
+        flareRing,
+        flareGhosts,
         waveWobble,
         edgeSoftness,
       );
@@ -232,12 +340,36 @@ class MagicStyle with Diagnosticable {
         ),
       )
       ..add(DoubleProperty('armStrength', armStrength, defaultValue: 0.5))
+      ..add(
+        EnumProperty<MagicSparkleShape>(
+          'sparkleShape',
+          sparkleShape,
+          defaultValue: MagicSparkleShape.glow,
+        ),
+      )
+      ..add(
+        EnumProperty<MagicSparkleColorMode>(
+          'sparkleColorMode',
+          sparkleColorMode,
+          defaultValue: MagicSparkleColorMode.palette,
+        ),
+      )
       ..add(IntProperty('sparkleLayers', sparkleLayers, defaultValue: 2))
       ..add(
         ColorProperty('glowColor', glowColor, defaultValue: kDefaultGlowColor),
       )
       ..add(DoubleProperty('glowWidth', glowWidth, defaultValue: 1.0))
       ..add(DoubleProperty('glowIntensity', glowIntensity, defaultValue: 1.0))
+      ..add(
+        EnumProperty<MagicWaveStyle>(
+          'waveStyle',
+          waveStyle,
+          defaultValue: MagicWaveStyle.glow,
+        ),
+      )
+      ..add(DoubleProperty('flareStreak', flareStreak, defaultValue: 1.0))
+      ..add(DoubleProperty('flareRing', flareRing, defaultValue: 1.0))
+      ..add(IntProperty('flareGhosts', flareGhosts, defaultValue: 3))
       ..add(DoubleProperty('waveWobble', waveWobble, defaultValue: 1.0))
       ..add(DoubleProperty('edgeSoftness', edgeSoftness, defaultValue: 1.0));
   }

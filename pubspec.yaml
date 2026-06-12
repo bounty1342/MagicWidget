@@ -1,8 +1,8 @@
 name: magic_widget
 description: >-
-  Reveal any widget with a magical left-to-right sweep, a warm glow and
-  twinkling rainbow sparkles, powered by a fragment shader. Works on iOS,
-  Android and Web.
+  An over-engineered magical reveal for any widget: a glowing sweep or lens
+  flare with twinkling rainbow sparkles, powered by a single fragment shader.
+  Works on iOS, Android and Web.
 version: 0.1.0
 repository: https://github.com/bounty1342/MagicWidget
 
