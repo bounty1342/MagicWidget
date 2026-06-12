@@ -16,13 +16,15 @@ works on **iOS**, **Android** and **Web** (CanvasKit / Skwasm renderers).
 
 ## Installation
 
-The package is not published on pub.dev yet; add it as a git dependency:
+```sh
+flutter pub add magic_widget
+```
+
+Or add it to your `pubspec.yaml` manually:
 
 ```yaml
 dependencies:
-  magic_widget:
-    git:
-      url: https://github.com/bounty1342/MagicWidget.git
+  magic_widget: ^0.1.0
 ```
 
 Requires Flutter `>=3.27.0` and Dart `^3.6.0`.
