@@ -1,0 +1,25 @@
+name: magic_widget
+description: >-
+  Reveal any widget with a magical left-to-right sweep, a warm glow and
+  twinkling rainbow sparkles, powered by a fragment shader. Works on iOS,
+  Android and Web.
+version: 0.1.0
+repository: https://github.com/bounty1342/MagicWidget
+
+environment:
+  sdk: ^3.6.0
+  flutter: ">=3.27.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_shaders: ^0.1.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  shaders:
+    - shaders/magic_sparkles.frag
